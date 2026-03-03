@@ -1,0 +1,578 @@
+<html>
+<head>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta charset="UTF-8">
+  <title>calc · HTA</title>
+  <hta:application
+    id="darkCalcApp"
+    applicationname="Calc"
+    border="none"
+    caption="no"
+    showintaskbar="yes"
+    singleinstance="yes"
+    sysmenu="no"
+    maximizebutton="no"
+    minimizebutton="no"
+    scroll="no"
+    windowstate="normal"
+  />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after {
+      margin: 0; padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    :root {
+      --bg:        #0d0d14;
+      --surface:   #15151f;
+      --card:      #1c1c2a;
+      --btn:       #222232;
+      --btn-hover: #2a2a3e;
+      --btn-active:#181826;
+      --op:        #252245;
+      --op-hover:  #302d58;
+      --op-active: #1c1a38;
+      --spec:      #2e1c1c;
+      --spec-hover:#3d2424;
+      --spec-active:#201212;
+      --eq:        #1e3a6e;
+      --eq-hover:  #2a4f96;
+      --eq-active: #152949;
+      --border:    rgba(255,255,255,0.06);
+      --text:      #e8e6ff;
+      --text-dim:  #7a78a0;
+      --text-op:   #b0abf5;
+      --text-spec: #f08080;
+      --text-eq:   #7ab3f5;
+      --display-bg:#0a0a10;
+      --expr-color:#6a6890;
+      --shadow:    0 8px 32px rgba(0,0,0,0.5);
+      --radius:    14px;
+      --btn-radius:12px;
+    }
+
+    body.light {
+      --bg:        #eeedf8;
+      --surface:   #f5f4ff;
+      --card:      #ffffff;
+      --btn:       #e8e7f5;
+      --btn-hover: #dddcf0;
+      --btn-active:#d0ceea;
+      --op:        #d8d4ff;
+      --op-hover:  #cac5ff;
+      --op-active: #b8b3f0;
+      --spec:      #ffd6d6;
+      --spec-hover:#ffbfbf;
+      --spec-active:#f0a8a8;
+      --eq:        #4444cc;
+      --eq-hover:  #5555dd;
+      --eq-active: #3333aa;
+      --border:    rgba(0,0,0,0.08);
+      --text:      #1a1830;
+      --text-dim:  #8a88b0;
+      --text-op:   #4438cc;
+      --text-spec: #cc2222;
+      --text-eq:   #ffffff;
+      --display-bg:#f0eeff;
+      --expr-color:#9a98c0;
+      --shadow:    0 8px 32px rgba(80,70,180,0.12);
+    }
+
+    body {
+      background: var(--bg);
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s ease;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .window {
+      width: 268px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow), 0 0 0 1px var(--border);
+      overflow: hidden;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px 6px;
+    }
+
+    .app-name {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .theme-btn {
+      width: 32px;
+      height: 18px;
+      background: var(--btn);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.3s;
+      flex-shrink: 0;
+    }
+    .theme-btn::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      transition: transform 0.3s, background 0.3s;
+    }
+    body.light .theme-btn::after {
+      transform: translateX(14px);
+      background: #5555cc;
+    }
+
+    /* ── Display ── */
+    .display-wrap {
+      margin: 0 10px 6px;
+      background: var(--display-bg);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 8px 12px 10px;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-end;
+      overflow: hidden;
+    }
+
+    .expr-line {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 300;
+      color: var(--expr-color);
+      min-height: 16px;
+      text-align: right;
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      letter-spacing: 0.03em;
+      transition: color 0.3s;
+    }
+
+    .main-line {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2.1rem;
+      font-weight: 400;
+      color: var(--text);
+      text-align: right;
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      transition: color 0.3s, font-size 0.15s;
+    }
+    .main-line.small { font-size: 1.4rem; }
+    .main-line.error { color: var(--text-spec); }
+
+    /* ── Button grid ── */
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+      padding: 0 10px 10px;
+    }
+
+    .btn-grid button {
+      height: 48px;
+      background: var(--btn);
+      border: 1px solid var(--border);
+      border-radius: var(--btn-radius);
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.12s, transform 0.08s, border-color 0.12s;
+      line-height: 1;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-grid button:hover  { background: var(--btn-hover); }
+    .btn-grid button:active { background: var(--btn-active); transform: scale(0.93); }
+
+    .btn-grid button.op {
+      background: var(--op);
+      color: var(--text-op);
+      font-size: 1.1rem;
+    }
+    .btn-grid button.op:hover  { background: var(--op-hover); }
+    .btn-grid button.op:active { background: var(--op-active); transform: scale(0.93); }
+
+    .btn-grid button.spec {
+      background: var(--spec);
+      color: var(--text-spec);
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .btn-grid button.spec:hover  { background: var(--spec-hover); }
+    .btn-grid button.spec:active { background: var(--spec-active); transform: scale(0.93); }
+
+    .btn-grid button.eq {
+      background: var(--eq);
+      color: var(--text-eq);
+      font-size: 1.3rem;
+      font-weight: 500;
+      grid-column: span 2;
+    }
+    .btn-grid button.eq:hover  { background: var(--eq-hover); }
+    .btn-grid button.eq:active { background: var(--eq-active); transform: scale(0.96); }
+
+    /* subtle glow on operators in dark mode */
+    body:not(.light) .btn-grid button.op {
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    body:not(.light) .btn-grid button.eq {
+      box-shadow: 0 0 18px rgba(80,120,240,0.25);
+    }
+  </style>
+
+  <script>
+    window.resizeTo(280, 406);
+    window.moveTo(
+      (screen.width  - 280) / 2,
+      (screen.height - 406) / 2
+    );
+    window.onresize = function () { window.resizeTo(280, 406); };
+  </script>
+</head>
+<body>
+  <div class="window" id="win">
+
+    <div class="header">
+      <div class="theme-btn" id="themeToggle" title="Toggle theme"></div>
+    </div>
+
+    <div class="display-wrap">
+      <div class="expr-line" id="exprLine">&nbsp;</div>
+      <div class="main-line" id="mainLine">0</div>
+    </div>
+
+    <div class="btn-grid">
+      <!-- row 1 -->
+      <button class="spec" id="clear">C</button>
+      <button class="op"   data-value="±">±</button>
+      <button class="op"   data-value="%">%</button>
+      <button class="spec" id="backspace">⌫</button>
+      <button class="op"   data-value="÷">÷</button>
+
+      <!-- row 2 -->
+      <button data-value="7">7</button>
+      <button data-value="8">8</button>
+      <button data-value="9">9</button>
+      <button class="op"   data-value="×">×</button>
+      <button class="op"   data-value="√">√</button>
+
+      <!-- row 3 -->
+      <button data-value="4">4</button>
+      <button data-value="5">5</button>
+      <button data-value="6">6</button>
+      <button class="op"   data-value="−">−</button>
+      <button class="op"   data-value="x²">x²</button>
+
+      <!-- row 4 -->
+      <button data-value="1">1</button>
+      <button data-value="2">2</button>
+      <button data-value="3">3</button>
+      <button class="op"   data-value="+">+</button>
+      <button class="op"   data-value="^">xʸ</button>
+
+      <!-- row 5 -->
+      <button class="op"   data-value="π">π</button>
+      <button data-value="0">0</button>
+      <button data-value=".">.</button>
+      <button class="eq"   id="equals">=</button>
+    </div>
+
+  </div>
+
+  <script>
+  (function () {
+    var exprLine = document.getElementById('exprLine');
+    var mainLine = document.getElementById('mainLine');
+    var clearBtn = document.getElementById('clear');
+    var bsBtn    = document.getElementById('backspace');
+    var eqBtn    = document.getElementById('equals');
+    var themeBtn = document.getElementById('themeToggle');
+
+    var expr = '';            // raw expression string
+    var displayExpr = '';     // pretty expression for expr line
+    var resultShown = false;
+    var lastResult  = '';
+
+    /* ── theme toggle ── */
+    themeBtn.addEventListener('click', function () {
+      document.body.classList.toggle('light');
+    });
+
+    /* ── display helpers ── */
+    function setMain(txt, isErr) {
+      mainLine.textContent = txt || '0';
+      mainLine.classList.toggle('error', !!isErr);
+      mainLine.classList.toggle('small', txt.length > 12);
+    }
+
+    function setExpr(txt) {
+      exprLine.textContent = txt || '\u00a0';
+    }
+
+    /* ── operator checks ── */
+    function isOp(ch) { return '+-*/^'.indexOf(ch) !== -1; }
+    function lastChar() { return expr.slice(-1); }
+
+    /* ── button map: display → internal ── */
+    var pretty2raw = {
+      '÷': '/',
+      '×': '*',
+      '−': '-',
+      'π': 'Math.PI',
+      '√': 'sqrt',
+      'x²': '^2',
+      'xʸ': '^',
+      '%': '%',
+      '±': '±',
+      '+': '+',
+      '^': '^'
+    };
+
+    /* pretty expression builder */
+    function prettyChar(val) {
+      var map = { '/':'÷', '*':'×', '-':'−', 'Math.PI':'π',
+                  'Math.sqrt(':'√(', '^2':'²', '^':'^' };
+      return map[val] || val;
+    }
+
+    /* ── wire up all data-value buttons ── */
+    var allBtns = document.querySelectorAll('[data-value]');
+    for (var i = 0; i < allBtns.length; i++) {
+      (function(btn) {
+        btn.addEventListener('click', function () {
+          var val = btn.getAttribute('data-value');
+          handleInput(val);
+        });
+      })(allBtns[i]);
+    }
+
+    function handleInput(val) {
+      /* ── ± sign toggle ── */
+      if (val === '±') {
+        if (resultShown && lastResult !== '') {
+          if (lastResult.charAt(0) === '-') {
+            lastResult = lastResult.slice(1);
+          } else {
+            lastResult = '-' + lastResult;
+          }
+          expr = lastResult;
+          displayExpr = lastResult;
+          setMain(lastResult);
+          setExpr('');
+        } else if (expr !== '') {
+          /* wrap entire expression in negation */
+          expr = '(-(' + expr + '))';
+          displayExpr = '−(' + displayExpr + ')';
+          setMain(displayExpr);
+        }
+        return;
+      }
+
+      /* ── if result was shown and user types a number/const → fresh start ── */
+      if (resultShown) {
+        var isDigitOrDot = /^[0-9.]$/.test(val) || val === 'π';
+        if (isDigitOrDot) {
+          expr = '';
+          displayExpr = '';
+        }
+        /* operator after result: continue from result */
+        resultShown = false;
+      }
+
+      /* ── √ (square root) ── */
+      if (val === '√') {
+        expr        += 'Math.sqrt(';
+        displayExpr += '√(';
+        setMain(displayExpr || '0');
+        setExpr('');
+        return;
+      }
+
+      /* ── x² (square shortcut) ── */
+      if (val === 'x²') {
+        expr        += '^2';
+        displayExpr += '²';
+        setMain(displayExpr || '0');
+        setExpr('');
+        return;
+      }
+
+      /* ── π constant ── */
+      if (val === 'π') {
+        expr        += 'Math.PI';
+        displayExpr += 'π';
+        setMain(displayExpr || '0');
+        setExpr('');
+        return;
+      }
+
+      /* ── map pretty ops to raw ── */
+      var raw    = pretty2raw[val] !== undefined ? pretty2raw[val] : val;
+      var pretty = val;
+
+      /* guard leading operator */
+      if (expr === '' && isOp(raw) && raw !== '-') return;
+      /* replace consecutive operators */
+      if (expr !== '' && isOp(raw) && isOp(lastChar())) {
+        expr        = expr.slice(0, -1) + raw;
+        displayExpr = displayExpr.slice(0, -1) + pretty;
+        setMain(displayExpr || '0');
+        return;
+      }
+
+      expr        += raw;
+      displayExpr += pretty;
+      setMain(displayExpr || '0');
+      setExpr('');
+    }
+
+    /* ── C ── */
+    clearBtn.addEventListener('click', function () {
+      expr = '';
+      displayExpr = '';
+      resultShown = false;
+      lastResult  = '';
+      setMain('0');
+      setExpr('\u00a0');
+    });
+
+    /* ── ⌫ ── */
+    bsBtn.addEventListener('click', function () {
+      if (resultShown) {
+        expr = '';
+        displayExpr = '';
+        resultShown = false;
+        setMain('0');
+        setExpr('\u00a0');
+        return;
+      }
+      /* handle multi-char tokens at end: Math.PI, Math.sqrt(, ^2 */
+      if (expr.slice(-8) === 'Math.PI') {
+        expr        = expr.slice(0, -8);
+        displayExpr = displayExpr.slice(0, -1); /* 'π' is 1 char */
+      } else if (expr.slice(-11) === 'Math.sqrt(') {
+        expr        = expr.slice(0, -11);
+        displayExpr = displayExpr.slice(0, -2); /* '√(' is 2 chars */
+      } else if (expr.slice(-2) === '^2') {
+        expr        = expr.slice(0, -2);
+        displayExpr = displayExpr.slice(0, -1); /* '²' is 1 char */
+      } else {
+        expr        = expr.slice(0, -1);
+        displayExpr = displayExpr.slice(0, -1);
+      }
+      setMain(displayExpr || '0');
+      setExpr('\u00a0');
+    });
+
+    /* ── = ── */
+    eqBtn.addEventListener('click', function () {
+      var raw = expr.trim() || '0';
+
+      /* handle ^ (power) */
+      var passes = 20;
+      while (raw.indexOf('^') !== -1 && passes-- > 0) {
+        var next = raw.replace(
+          /(\d+(?:\.\d+)?|Math\.PI|\([^()]+\))\s*\^\s*(\d+(?:\.\d+)?|Math\.PI|\([^()]+\))/,
+          function (m, b, e) { return 'Math.pow(' + b + ',' + e + ')'; }
+        );
+        if (next === raw) break;
+        raw = next;
+      }
+
+      /* handle trailing % */
+      raw = raw.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
+
+      /* sanitize */
+      raw = raw.replace(/[^0-9.()+\-*/,Math.sqrtpow]/g, '');
+
+      var result, isErr = false;
+      try {
+        result = (new Function('return ' + raw))();
+        if (!isFinite(result) || isNaN(result)) { isErr = true; }
+      } catch (e) { isErr = true; }
+
+      if (isErr) {
+        setExpr(displayExpr);
+        setMain('Error', true);
+        expr = '';
+        displayExpr = '';
+        resultShown = true;
+        lastResult  = '';
+        return;
+      }
+
+      var resultStr;
+      if (result % 1 === 0) {
+        resultStr = result.toString();
+      } else {
+        resultStr = parseFloat(result.toFixed(10)).toString();
+      }
+
+      setExpr(displayExpr + ' =');
+      setMain(resultStr);
+      lastResult  = resultStr;
+      expr        = resultStr;
+      displayExpr = resultStr;
+      resultShown = true;
+    });
+
+    /* ── keyboard support ── */
+    document.addEventListener('keydown', function (e) {
+      var k = e.key;
+      if (k >= '0' && k <= '9') { handleInput(k); return; }
+      if (k === '.') { handleInput('.'); return; }
+      if (k === '+') { handleInput('+'); return; }
+      if (k === '-') { handleInput('−'); return; }
+      if (k === '*') { handleInput('×'); return; }
+      if (k === '/') { e.preventDefault(); handleInput('÷'); return; }
+      if (k === '^') { handleInput('^'); return; }
+      if (k === '%') { handleInput('%'); return; }
+      if (k === 'Enter' || k === '=') { eqBtn.click(); return; }
+      if (k === 'Backspace') { bsBtn.click(); return; }
+      if (k === 'Escape' || k === 'c' || k === 'C') { clearBtn.click(); return; }
+    });
+  })();
+  </script>
+</body>
+</html>
